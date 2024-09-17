@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 
 // 기본 타입 정의
 type Tile = number | null;
-export type Map2048 = Tile[][];
+type Map2048 = Tile[][];
 type Direction = 'up' | 'left' | 'right' | 'down';
 
 // 2048 맵을 이동시키는 함수 정의
