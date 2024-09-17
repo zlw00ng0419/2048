@@ -2,173 +2,203 @@ import './App.css';
 
 import React, { useEffect, useState } from 'react';
 
+// 기본 타입 정의
 type Tile = number | null;
+export type Map2048 = Tile[][];
+type Direction = 'up' | 'left' | 'right' | 'down';
 
-const createBoard = (): Tile[][] => {
-  const board: Tile[][] = Array(4)
-    .fill(null)
-    .map(() => Array(4).fill(null));
+// 2048 맵을 이동시키는 함수 정의
+const moveMapIn2048Rule = (
+  map: Map2048,
+  direction: Direction
+): { result: Map2048; isMoved: boolean } => {
+  if (!validateMapIsNByM(map)) throw new Error("Map is not N by M");
+
+  const rotatedMap = rotateMapCounterClockwise(map, rotateDegreeMap[direction]);
+  const { result, isMoved } = moveLeft(rotatedMap);
+
+  return {
+    result: rotateMapCounterClockwise(result, revertDegreeMap[direction]),
+    isMoved,
+  };
+};
+
+// 맵의 유효성을 검증하는 함수
+const validateMapIsNByM = (map: Map2048): boolean => {
+  const firstColumnCount = map[0]?.length ?? 0;
+  return map.every((row) => row.length === firstColumnCount);
+};
+
+// 맵을 회전하는 로직
+const rotateMapCounterClockwise = (
+  map: Map2048,
+  degree: 0 | 90 | 180 | 270
+): Map2048 => {
+  const rowLength = map.length;
+  const columnLength = map[0]?.length ?? 0;
+
+  switch (degree) {
+    case 0:
+      return map;
+    case 90:
+      return Array.from({ length: columnLength }, (_, columnIndex): Tile[] =>
+        Array.from(
+          { length: rowLength },
+          (_, rowIndex): Tile => map[rowIndex]?.[columnLength - columnIndex - 1] ?? null
+        )
+      );
+    case 180:
+      return Array.from({ length: rowLength }, (_, rowIndex): Tile[] =>
+        Array.from(
+          { length: columnLength },
+          (_, columnIndex): Tile =>
+            map[rowLength - rowIndex - 1]?.[columnLength - columnIndex - 1] ?? null
+        )
+      );
+    case 270:
+      return Array.from({ length: columnLength }, (_, columnIndex): Tile[] =>
+        Array.from(
+          { length: rowLength },
+          (_, rowIndex): Tile => map[rowLength - rowIndex - 1]?.[columnIndex] ?? null
+        )
+      );
+    default:
+      throw new Error("Invalid rotation degree");
+  }
+};
+
+// 타일을 왼쪽으로 이동하는 로직
+const moveLeft = (map: Map2048): { result: Map2048; isMoved: boolean } => {
+  const movedRows = map.map(moveRowLeft);
+  const result: Map2048 = movedRows.map((movedRow) => movedRow.result);
+  const isMoved = movedRows.some((movedRow) => movedRow.isMoved);
+  return { result, isMoved };
+};
+
+// 각 줄을 왼쪽으로 병합하는 함수
+const moveRowLeft = (row: Tile[]): { result: Tile[]; isMoved: boolean } => {
+  const reduced = row.reduce(
+    (acc: { lastCell: Tile | null; result: Tile[] }, cell) => {
+      if (cell === null) {
+        return acc;
+      } else if (acc.lastCell === null) {
+        return { ...acc, lastCell: cell };
+      } else if (acc.lastCell === cell) {
+        return { result: [...acc.result, cell * 2], lastCell: null };
+      } else {
+        return { result: [...acc.result, acc.lastCell], lastCell: cell };
+      }
+    },
+    { lastCell: null, result: [] }
+  );
+
+  const result: Tile[] = [...reduced.result, reduced.lastCell].filter((val): val is Tile => val !== null);
+  const resultRow: Tile[] = Array.from({ length: row.length }, (_, i) => result[i] ?? null);
+
+  return {
+    result: resultRow,
+    isMoved: row.some((cell, i) => cell !== resultRow[i]),
+  };
+};
+
+// 회전 각도 정의
+const rotateDegreeMap: Record<Direction, 0 | 90 | 180 | 270> = {
+  up: 90,
+  right: 180,
+  down: 270,
+  left: 0,
+};
+
+// 회전 복원 각도 정의
+const revertDegreeMap: Record<Direction, 0 | 90 | 180 | 270> = {
+  up: 270,
+  right: 180,
+  down: 90,
+  left: 0,
+};
+
+// 게임 보드 생성 함수
+const createBoard = (): Map2048 => {
+  const board: Map2048 = Array.from({ length: 4 }, (): Tile[] => Array(4).fill(null) as Tile[]);
   addRandomTile(board);
   addRandomTile(board);
   return board;
 };
 
-const addRandomTile = (board: Tile[][]): void => {
-  const emptyTiles: { row: number; col: number }[] = [];
+// 새로운 타일을 추가하는 함수
+const addRandomTile = (board: Map2048): void => {
+  const emptyTiles = [];
   for (let row = 0; row < 4; row++) {
     for (let col = 0; col < 4; col++) {
-      if (!board[row][col]) {
+      if (board[row]?.[col] === null) {  // 명확한 null 확인
         emptyTiles.push({ row, col });
       }
     }
   }
-  if (emptyTiles.length > 0) {
-    const { row, col } =
-      emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
-    board[row][col] = Math.random() > 0.5 ? 2 : 4;
+
+  const randomTile: { row: number; col: number } | undefined = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
+  if (
+    randomTile !== undefined && // randomTile이 정의되었는지 확인
+    randomTile.row >= 0 && // row가 유효한지 확인
+    randomTile.row < board.length && // board의 길이 내에서 유효한 row 인덱스인지 확인
+    board[randomTile.row]?.length > randomTile.col && // Optional chaining으로 board[randomTile.row]가 undefined가 아닌지 확인
+    randomTile.col >= 0 // col이 0 이상인지 확인
+  ) {
+    board[randomTile.row]![randomTile.col] = Math.random() > 0.5 ? 2 : 4; // 안전하게 타일 값을 할당
   }
+  
 };
 
-const isNotNull = (tile: Tile | null): tile is Tile => tile !== null;
-
-const slideRow = (row: (Tile | null)[]): (Tile | null)[] => {
-  const newRow = row.filter(isNotNull);
-  while (newRow.length < 4) {
-    newRow.push(null);
-  }
-  return newRow;
-};
-
-const combineRow = (row: (Tile | null)[]): (Tile | null)[] => {
-  for (let i = 0; i < 3; i++) {
-    if (row[i] !== null && row[i] === row[i + 1]) {
-      row[i] = row[i]! * 2;
-      row[i + 1] = null;
-    }
-  }
-  return row;
-};
-
-const moveTiles = (
-  board: Tile[][],
-  moveFn: (row: Tile[]) => Tile[],
-): { newBoard: Tile[][]; moved: boolean } => {
-  let moved = false;
-  const newBoard: Tile[][] = board.map((row) => {
-    const originalRow = [...row];
-    const newRow = moveFn([...row]);
-
-    if (JSON.stringify(originalRow) !== JSON.stringify(newRow)) {
-      moved = true;
-    }
-
-    return newRow;
-  });
-
-  return { newBoard, moved };
-};
-
-const moveLeft = (board: Tile[][]): { newBoard: Tile[][]; moved: boolean } => {
-  return moveTiles(board, (row) => {
-    let newRow = slideRow(row);
-    newRow = combineRow(newRow);
-    return slideRow(newRow);
-  });
-};
-
-const moveRight = (board: Tile[][]): { newBoard: Tile[][]; moved: boolean } => {
-  return moveTiles(board, (row) => {
-    const newRow = slideRow([...row].reverse());
-    const combinedRow = combineRow(newRow);
-    return slideRow(combinedRow).reverse();
-  });
-};
-
-const rotateLeft = (board: Tile[][]): Tile[][] => {
-  const rotatedBoard = Array(4)
-    .fill(null)
-    .map(() => Array(4).fill(null));
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 4; col++) {
-      rotatedBoard[3 - col][row] = board[row][col];
-    }
-  }
-  return rotatedBoard;
-};
-
-const rotateRight = (board: Tile[][]): Tile[][] => {
-  const rotatedBoard = Array(4)
-    .fill(null)
-    .map(() => Array(4).fill(null));
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 4; col++) {
-      rotatedBoard[col][3 - row] = board[row][col];
-    }
-  }
-  return rotatedBoard;
-};
-
-const moveUp = (board: Tile[][]): { newBoard: Tile[][]; moved: boolean } => {
-  const rotatedBoard = rotateLeft(board);
-  const { newBoard, moved } = moveLeft(rotatedBoard);
-  return { newBoard: rotateRight(newBoard), moved };
-};
-
-const moveDown = (board: Tile[][]): { newBoard: Tile[][]; moved: boolean } => {
-  const rotatedBoard = rotateRight(board);
-  const { newBoard, moved } = moveLeft(rotatedBoard);
-  return { newBoard: rotateLeft(newBoard), moved };
-};
-
+// React 컴포넌트
 const App: React.FC = () => {
-  const [board, setBoard] = useState<Tile[][]>(createBoard);
+  const [board, setBoard] = useState<Map2048>(createBoard);
   const [gameOver, setGameOver] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (gameOver) return;
 
-      let newBoardState = { newBoard: board, moved: false };
-      if (event.key === 'ArrowUp') {
-        newBoardState = moveUp(board);
-      } else if (event.key === 'ArrowDown') {
-        newBoardState = moveDown(board);
-      } else if (event.key === 'ArrowLeft') {
-        newBoardState = moveLeft(board);
-      } else if (event.key === 'ArrowRight') {
-        newBoardState = moveRight(board);
+      let newBoardState = { result: board, isMoved: false };
+      if (event.key === "ArrowUp") {
+        newBoardState = moveMapIn2048Rule(board, "up");
+      } else if (event.key === "ArrowDown") {
+        newBoardState = moveMapIn2048Rule(board, "down");
+      } else if (event.key === "ArrowLeft") {
+        newBoardState = moveMapIn2048Rule(board, "left");
+      } else if (event.key === "ArrowRight") {
+        newBoardState = moveMapIn2048Rule(board, "right");
       }
 
-      if (newBoardState.moved) {
-        addRandomTile(newBoardState.newBoard);
-        setBoard(newBoardState.newBoard);
+      if (newBoardState.isMoved) {
+        addRandomTile(newBoardState.result);
+        setBoard(newBoardState.result);
 
-        if (newBoardState.newBoard.flat().includes(128)) {
+        if (newBoardState.result.flat().includes(128)) {
           setGameOver(true);
         }
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [board, gameOver]);
 
   const renderBoard = () => {
     return board.map((row, rowIndex) => (
-      <div key={rowIndex} style={{ display: 'flex' }}>
+      <div key={rowIndex} style={{ display: "flex" }}>
         {row.map((tile, colIndex) => (
           <div
             key={colIndex}
             style={{
-              width: '50px',
-              height: '50px',
-              border: '1px solid black',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: tile ? 'lightgray' : 'white',
+              width: "50px",
+              height: "50px",
+              border: "1px solid black",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: tile !== null ? "lightgray" : "white",
             }}
           >
             {tile}
@@ -179,7 +209,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div style={{ textAlign: 'center', marginTop: '20px' }}>
+    <div style={{ textAlign: "center", marginTop: "20px" }}>
       {gameOver ? (
         <div>
           <h1>축하합니다! 128을 만드셨습니다!</h1>
