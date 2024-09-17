@@ -127,26 +127,40 @@ const createBoard = (): Map2048 => {
 
 // 새로운 타일을 추가하는 함수
 const addRandomTile = (board: Map2048): void => {
-  const emptyTiles = [];
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 4; col++) {
-      if (board[row]?.[col] === null) {  // 명확한 null 확인
-        emptyTiles.push({ row, col });
+  const emptyTiles: { row: number; col: number }[] = [];
+
+  // row가 정의되어 있고 배열인지 확인한 후 진행
+  for (let row = 0; row < board.length; row++) {
+    const currentRow = board[row];  // currentRow를 별도로 정의하여 명확하게 처리
+    if (currentRow !== undefined && Array.isArray(currentRow)) {  // board[row]가 undefined가 아니고 배열인지 확인
+      for (let col = 0; col < currentRow.length; col++) {
+        if (currentRow[col] === null) {  // 타일이 null인지 확인
+          emptyTiles.push({ row, col });
+        }
       }
     }
   }
 
-  const randomTile: { row: number; col: number } | undefined = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
-  if (
-    randomTile !== undefined && // randomTile이 정의되었는지 확인
-    randomTile.row >= 0 && // row가 유효한지 확인
-    randomTile.row < board.length && // board의 길이 내에서 유효한 row 인덱스인지 확인
-    board[randomTile.row]?.length > randomTile.col && // Optional chaining으로 board[randomTile.row]가 undefined가 아닌지 확인
-    randomTile.col >= 0 // col이 0 이상인지 확인
-  ) {
-    board[randomTile.row]![randomTile.col] = Math.random() > 0.5 ? 2 : 4; // 안전하게 타일 값을 할당
+  // 빈 타일이 있는 경우 실행
+  if (emptyTiles.length > 0) {
+    const randomTile = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
+
+    // randomTile이 유효하고, 해당 row와 col이 배열 내에서 유효한지 확인
+    if (
+      randomTile !== undefined &&  // randomTile이 정의되었는지 확인
+      randomTile.row >= 0 && 
+      randomTile.row < board.length &&  // row가 유효한지 확인
+      board[randomTile.row] !== undefined &&  // board[randomTile.row]가 undefined가 아닌지 확인
+      Array.isArray(board[randomTile.row]) &&  // board[randomTile.row]가 배열인지 확인
+      randomTile.col >= 0 && 
+      randomTile.col < (board[randomTile.row] as Tile[]).length  // col이 유효한지 확인
+    ) {
+      const currentRow = board[randomTile.row] as Tile[];  // currentRow를 명확하게 처리
+      if (currentRow[randomTile.col] === null) {  // 명확하게 null 체크
+        currentRow[randomTile.col] = Math.random() > 0.5 ? 2 : 4;  // 안전하게 타일에 값 할당
+      }
+    }
   }
-  
 };
 
 // React 컴포넌트
