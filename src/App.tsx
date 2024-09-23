@@ -11,11 +11,16 @@ type Direction = 'up' | 'left' | 'right' | 'down';
 const moveMapIn2048Rule = (
   map: Map2048,
   direction: Direction,
+  setScore: React.Dispatch<React.SetStateAction<number>>, // 점수를 업데이트하기 위한 함수 전달
 ): { result: Map2048; isMoved: boolean } => {
   if (!validateMapIsNByM(map)) throw new Error('Map is not N by M');
 
   const rotatedMap = rotateMapCounterClockwise(map, rotateDegreeMap[direction]);
-  const { result, isMoved } = moveLeft(rotatedMap);
+  const { result, isMoved, score } = moveLeft(rotatedMap);
+
+  if (score > 0) {
+    setScore((prevScore) => prevScore + score); // 합쳐진 타일 점수를 추가
+  }
 
   return {
     result: rotateMapCounterClockwise(result, revertDegreeMap[direction]),
@@ -71,15 +76,27 @@ const rotateMapCounterClockwise = (
 };
 
 // 타일을 왼쪽으로 이동하는 로직
-const moveLeft = (map: Map2048): { result: Map2048; isMoved: boolean } => {
-  const movedRows = map.map(moveRowLeft);
+const moveLeft = (
+  map: Map2048,
+): { result: Map2048; isMoved: boolean; score: number } => {
+  let score = 0;
+  const movedRows = map.map((row) => {
+    const { result, isMoved, rowScore } = moveRowLeft(row);
+    score += rowScore;
+    return { result, isMoved };
+  });
+
   const result: Map2048 = movedRows.map((movedRow) => movedRow.result);
   const isMoved = movedRows.some((movedRow) => movedRow.isMoved);
-  return { result, isMoved };
+  return { result, isMoved, score };
 };
 
 // 각 줄을 왼쪽으로 병합하는 함수
-const moveRowLeft = (row: Tile[]): { result: Tile[]; isMoved: boolean } => {
+const moveRowLeft = (
+  row: Tile[],
+): { result: Tile[]; isMoved: boolean; rowScore: number } => {
+  let rowScore = 0;
+
   const reduced = row.reduce(
     (acc: { lastCell: Tile | null; result: Tile[] }, cell) => {
       if (cell === null) {
@@ -87,6 +104,7 @@ const moveRowLeft = (row: Tile[]): { result: Tile[]; isMoved: boolean } => {
       } else if (acc.lastCell === null) {
         return { ...acc, lastCell: cell };
       } else if (acc.lastCell === cell) {
+        rowScore += cell * 2; // 점수 추가
         return { result: [...acc.result, cell * 2], lastCell: null };
       } else {
         return { result: [...acc.result, acc.lastCell], lastCell: cell };
@@ -106,6 +124,7 @@ const moveRowLeft = (row: Tile[]): { result: Tile[]; isMoved: boolean } => {
   return {
     result: resultRow,
     isMoved: row.some((cell, i) => cell !== resultRow[i]),
+    rowScore,
   };
 };
 
@@ -182,6 +201,7 @@ const addRandomTile = (board: Map2048): void => {
 const App: React.FC = () => {
   const [board, setBoard] = useState<Map2048>(createBoard);
   const [gameOver, setGameOver] = useState(false);
+  const [score, setScore] = useState(0); // 점수 상태 추가
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -189,13 +209,13 @@ const App: React.FC = () => {
 
       let newBoardState = { result: board, isMoved: false };
       if (event.key === 'ArrowUp') {
-        newBoardState = moveMapIn2048Rule(board, 'up');
+        newBoardState = moveMapIn2048Rule(board, 'up', setScore);
       } else if (event.key === 'ArrowDown') {
-        newBoardState = moveMapIn2048Rule(board, 'down');
+        newBoardState = moveMapIn2048Rule(board, 'down', setScore);
       } else if (event.key === 'ArrowLeft') {
-        newBoardState = moveMapIn2048Rule(board, 'left');
+        newBoardState = moveMapIn2048Rule(board, 'left', setScore);
       } else if (event.key === 'ArrowRight') {
-        newBoardState = moveMapIn2048Rule(board, 'right');
+        newBoardState = moveMapIn2048Rule(board, 'right', setScore);
       }
 
       if (newBoardState.isMoved) {
@@ -239,15 +259,14 @@ const App: React.FC = () => {
 
   return (
     <div style={{ textAlign: 'center', marginTop: '20px' }}>
+      <h1>128 게임</h1>
+      <h2>점수: {score}</h2> {/* 점수 표시 */}
       {gameOver ? (
         <div>
           <h1>축하합니다! 128을 만드셨습니다!</h1>
         </div>
       ) : (
-        <div>
-          <h1>128 게임</h1>
-          {renderBoard()}
-        </div>
+        <div>{renderBoard()}</div>
       )}
     </div>
   );
