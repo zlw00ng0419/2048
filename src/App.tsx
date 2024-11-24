@@ -266,14 +266,20 @@ const App: React.FC = () => {
       {gameOver ? (
         <div>
           <h1>축하합니다! 128을 만드셨습니다!</h1>
-          <button onClick={resetGame} style={{ marginTop: '10px', padding: '10px' }}>
+          <button
+            onClick={resetGame}
+            style={{ marginTop: '10px', padding: '10px' }}
+          >
             다시하기
           </button>
         </div>
       ) : (
         <div>
           {renderBoard()}
-          <button onClick={resetGame} style={{ marginTop: '10px', padding: '10px' }}>
+          <button
+            onClick={resetGame}
+            style={{ marginTop: '10px', padding: '10px' }}
+          >
             다시하기
           </button>
           <button
