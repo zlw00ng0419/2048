@@ -1,4 +1,4 @@
-import { describe, expect,it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { Map2048 } from '../src/App';
 import { moveLeft } from '../src/App';
