@@ -2,7 +2,7 @@ import { rotateMapCounterClockwise } from './boardUtils';
 
 export type Tile = number | null;
 export type Map2048 = Tile[][];
-export type Direction = 'up' | 'left' | 'right' | 'down';
+type Direction = 'up' | 'left' | 'right' | 'down';
 
 const rotateDegreeMap: Record<Direction, 0 | 90 | 180 | 270> = {
   up: 90,
@@ -51,7 +51,7 @@ export const moveLeft = (
   return { result, isMoved, score };
 };
 
-export const moveRowLeft = (
+const moveRowLeft = (
   row: Tile[],
 ): { result: Tile[]; isMoved: boolean; rowScore: number } => {
   let rowScore = 0;
