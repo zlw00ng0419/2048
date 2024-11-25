@@ -296,3 +296,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+export { moveLeft };
+export type { Map2048 };
