@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Map2048 } from '../src/App';
-import { moveLeft } from '../src/App';
+import type { Map2048 } from '../src/utils/gameLogic';
+import { moveLeft } from '../src/utils/gameLogic';
 
 describe('moveLeft', () => {
   it('should move tiles to the left and merge correctly', () => {
